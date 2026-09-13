@@ -78,16 +78,24 @@ export const PAINT_COLORS = [
   { name: 'Miami Teal', hex: '#12a5a0' },
 ] as const;
 
+export const LAP_OPTIONS = [1, 3, 5] as const;
+export type LapCount = (typeof LAP_OPTIONS)[number];
+
 export interface Settings {
   quality: QualityLevel;
   masterVolume: number;
   paintIndex: number;
   showPerf: boolean;
+  laps: LapCount;
 }
 
 const STORAGE_KEY = 'nfs.settings.v1';
 
-const DEFAULTS: Settings = { quality: 'high', masterVolume: 0.7, paintIndex: 0, showPerf: false };
+const DEFAULTS: Settings = { quality: 'high', masterVolume: 0.7, paintIndex: 0, showPerf: false, laps: 3 };
+
+function isLapCount(v: unknown): v is LapCount {
+  return typeof v === 'number' && (LAP_OPTIONS as readonly number[]).includes(v);
+}
 
 export function isQuality(v: unknown): v is QualityLevel {
   return typeof v === 'string' && (QUALITY_LEVELS as readonly string[]).includes(v);
@@ -108,6 +116,7 @@ export function loadSettings(storage: Pick<Storage, 'getItem'> | null = safeStor
           ? Math.floor(p.paintIndex)
           : DEFAULTS.paintIndex,
       showPerf: typeof p.showPerf === 'boolean' ? p.showPerf : DEFAULTS.showPerf,
+      laps: isLapCount(p.laps) ? p.laps : DEFAULTS.laps,
     };
   } catch {
     return { ...DEFAULTS };

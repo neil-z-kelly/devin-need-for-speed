@@ -4,6 +4,8 @@ A browser-based, third-person circuit racing game inspired by Need for Speed, bu
 
 Stack: TypeScript, Three.js (WebGL2), Rapier physics (raycast vehicle controller), Vite, React for menus and HUD only.
 
+One circuit (Harbor Circuit, about 2.5 km: downtown, waterfront, tunnel, hillside), 1, 3 or 5 laps, you against five AI drivers. Menu, countdown, race HUD (speed, RPM, gear, nitrous, standings, lap times, minimap), pause, results with locally saved best times, and synthesized engine and tyre audio.
+
 ## Run
 
 Requires Node 22 (see `.nvmrc`) and pnpm.
@@ -31,21 +33,38 @@ Any browser with WebGL2. WebGPU is not used.
 | Camera | C | Right bumper |
 | Pause | Esc / P | Start |
 
+## Architecture
+
+```
+src/track      shared centreline spline: road geometry, checkpoints, AI path, minimap
+src/physics    Rapier world, raycast vehicle (VehicleSim), drivetrain model
+src/race       RaceRules (checkpoints, laps, standings), AiDriver, AiCar
+src/render     Renderer, TrackScene, CarModel, ChaseCamera, Sky, procedural textures
+src/game       Game (owns everything), FixedStepLoop (60 Hz sim, interpolated render)
+src/input      keyboard and gamepad
+src/audio      Web Audio engine, tyre and nitrous synthesis
+src/state      settings, best times, tiny store used by the React UI
+src/ui         React menu, HUD, results, minimap canvas
+src/telemetry  PerfMonitor
+```
+
+The simulation steps at a fixed 60 Hz independent of the render rate; the render interpolates between the last two physics poses. React never touches the scene graph, it only subscribes to the HUD store.
+
 ## Graphics quality and performance
 
 Quality is stored in `localStorage` and can be forced per page load with `?quality=low|medium|high|ultra`.
 On a software rasterizer (SwiftShader, llvmpipe) the first launch defaults to `low`.
 Frame telemetry is exposed on `window.__nfsPerf.snapshot()` (fps, frame time, worst 1 percent, draw calls, triangles, GPU string).
 
-Measured on a Devin VM with no GPU (SwiftShader CPU rasterizer, 8 cores, 1280x720 viewport), driving the opening downtown straight:
+Measured on a Devin VM with no GPU (SwiftShader CPU rasterizer, 8 cores, 1280x720 viewport), full race with five AI cars, driving the opening downtown straight:
 
 | Quality | Resolution | FPS | Frame ms | Draw calls | Triangles |
 | --- | --- | --- | --- | --- | --- |
-| low | 844x475 | 4.8 | 210 | 62 | 390k |
-| medium | 1280x720 | 0.8 | 1220 | 117 | 753k |
-| high | 1280x720 | 1.2 | 836 | 131 | 754k |
+| low | 844x475 | 5.1 | 196 | 63 | 391k |
+| medium | 1280x720 | 0.5 | 2171 | 371 | 2.55M |
+| high | 1280x720 | 1.6 | 612 | 387 | 2.55M |
 
-These numbers describe a CPU emulating a GPU and are not representative of any real graphics card. Simulation runs at a fixed 60 Hz regardless of render rate.
+These numbers describe a CPU emulating a GPU and are not representative of any real graphics card. Medium is slower than high here because its MSAA framebuffer is costly for a software rasterizer, while high renders through a non-multisampled post-processing target. The triangle count is dominated by the six Ferrari meshes (about 360k each) when the AI pack is in view. Simulation runs at a fixed 60 Hz regardless of render rate.
 
 ## Assets
 

@@ -25,6 +25,9 @@ const KEYMAP = {
   camera: ['KeyC'],
 } as const;
 
+/** Standard gamepad button indices. */
+const PAD = { a: 0, x: 2, y: 3, rb: 5, lt: 6, rt: 7, back: 8, start: 9 } as const;
+
 const DEADZONE = 0.12;
 const applyDeadzone = (v: number): number =>
   Math.abs(v) < DEADZONE ? 0 : (Math.sign(v) * (Math.abs(v) - DEADZONE)) / (1 - DEADZONE);
@@ -38,6 +41,7 @@ export class Input {
   private readonly pressedEdges = new Set<string>();
   private keyboardSteer = 0;
   private gamepadIndex: number | null = null;
+  private padWasDown = new Set<number>();
   readonly state: InputState = {
     throttle: 0,
     brake: 0,
@@ -105,18 +109,23 @@ export class Input {
     let handbrake = this.anyDown(KEYMAP.handbrake);
     let nitrous = this.anyDown(KEYMAP.nitrous);
     let reset = this.anyEdge(KEYMAP.reset);
-    const pauseToggle = this.anyEdge(KEYMAP.pause);
-    const cameraToggle = this.anyEdge(KEYMAP.camera);
+    let pauseToggle = this.anyEdge(KEYMAP.pause);
+    let cameraToggle = this.anyEdge(KEYMAP.camera);
 
     const pad = this.readGamepad();
     if (pad) {
       const stick = applyDeadzone(pad.axes[0] ?? 0);
       if (Math.abs(stick) > 0) steer = stick;
-      throttle = Math.max(throttle, pad.buttons[7]?.value ?? 0);
-      brake = Math.max(brake, pad.buttons[6]?.value ?? 0);
-      handbrake ||= pad.buttons[0]?.pressed ?? false;
-      nitrous ||= pad.buttons[2]?.pressed ?? false;
-      reset ||= pad.buttons[3]?.pressed ?? false;
+      throttle = Math.max(throttle, pad.buttons[PAD.rt]?.value ?? 0);
+      brake = Math.max(brake, pad.buttons[PAD.lt]?.value ?? 0);
+      handbrake ||= pad.buttons[PAD.a]?.pressed ?? false;
+      nitrous ||= pad.buttons[PAD.x]?.pressed ?? false;
+      const nowDown = new Set<number>([PAD.y, PAD.back, PAD.rb, PAD.start].filter((b) => pad.buttons[b]?.pressed));
+      const edge = (b: number) => nowDown.has(b) && !this.padWasDown.has(b);
+      reset ||= edge(PAD.y) || edge(PAD.back);
+      cameraToggle ||= edge(PAD.rb);
+      pauseToggle ||= edge(PAD.start);
+      this.padWasDown = nowDown;
     }
 
     s.throttle = throttle;

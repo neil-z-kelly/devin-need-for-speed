@@ -40,6 +40,15 @@ export class ChaseCamera {
     this.update(target, 1 / 60);
   }
 
+  /** Slow showcase orbit for the menu; `time` in seconds. */
+  orbit(t: CameraTarget, time: number): void {
+    this.initialised = false;
+    const a = time * 0.25;
+    this.camera.position.set(Math.sin(a) * 6.5, 1.6, Math.cos(a) * 6.5).add(t.position);
+    this.lookAt.copy(t.position).setY(t.position.y + 0.6);
+    this.camera.lookAt(this.lookAt);
+  }
+
   update(t: CameraTarget, dt: number): void {
     this.forward.copy(FORWARD).applyQuaternion(t.quaternion);
     this.flatForward.set(this.forward.x, 0, this.forward.z);

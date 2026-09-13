@@ -43,10 +43,38 @@ export function useStore<T extends object, R>(store: Store<T>, selector: (s: T) 
 
 export type GamePhase = 'loading' | 'menu' | 'countdown' | 'racing' | 'paused' | 'finished';
 
+export interface Standing {
+  name: string;
+  paint: string;
+  isPlayer: boolean;
+  lapsDone: number;
+  metresBehind: number;
+  finishTime: number | null;
+}
+
+export interface RaceResult {
+  position: number;
+  lapTimes: number[];
+  totalTime: number;
+  bestLap: number | null;
+  newBestLap: boolean;
+  newBestRace: boolean;
+}
+
 export interface HudState {
   phase: GamePhase;
   loadingProgress: number;
   loadingLabel: string;
+  /** Seconds left in the countdown; 0 shows GO, negative hides the banner. */
+  countdown: number;
+  lap: number;
+  totalLaps: number;
+  lapTime: number;
+  lastLapTime: number | null;
+  bestLapTime: number | null;
+  position: number;
+  standings: Standing[];
+  result: RaceResult | null;
   speedKmh: number;
   rpm: number;
   gear: number;
@@ -68,6 +96,15 @@ export const hudStore = new Store<HudState>({
   phase: 'loading',
   loadingProgress: 0,
   loadingLabel: 'Starting',
+  countdown: 3,
+  lap: 0,
+  totalLaps: 3,
+  lapTime: 0,
+  lastLapTime: null,
+  bestLapTime: null,
+  position: 1,
+  standings: [],
+  result: null,
   speedKmh: 0,
   rpm: 0,
   gear: 1,

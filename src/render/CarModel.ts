@@ -43,7 +43,9 @@ export class CarModel {
   private readonly steeringRestQuat: Quaternion | null;
   private readonly materials: Material[] = [];
 
-  private constructor(scene: Group, opts: CarModelOptions) {
+  /** Each instance clones the shared glTF asset so paint and wheel poses are independent. */
+  constructor(asset: Group, opts: CarModelOptions) {
+    const scene = asset.clone(true);
     const inner = new Group();
     inner.rotation.y = Math.PI;
     inner.add(scene);
@@ -129,7 +131,7 @@ export class CarModel {
     }
   }
 
-  static async load(url: string, opts: CarModelOptions, onProgress?: (fraction: number) => void): Promise<CarModel> {
+  static async loadAsset(url: string, onProgress?: (fraction: number) => void): Promise<Group> {
     const draco = new DRACOLoader();
     draco.setDecoderPath('/assets/draco/');
     const loader = new GLTFLoader();
@@ -138,7 +140,7 @@ export class CarModel {
       if (e.lengthComputable && onProgress) onProgress(e.loaded / e.total);
     });
     draco.dispose();
-    return new CarModel(gltf.scene, opts);
+    return gltf.scene;
   }
 
   setPaint(hex: string): void {

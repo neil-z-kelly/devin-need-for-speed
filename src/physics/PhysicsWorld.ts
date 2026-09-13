@@ -50,6 +50,16 @@ export class PhysicsWorld {
     return this.world.createCollider(desc);
   }
 
+  /** Position-driven body for opponents: the player collides with it but it never reacts. */
+  addKinematicBox(halfExtents: { x: number; y: number; z: number }, offsetY: number): RAPIER.RigidBody {
+    const body = this.world.createRigidBody(this.R.RigidBodyDesc.kinematicPositionBased());
+    const desc = this.R.ColliderDesc.cuboid(halfExtents.x, halfExtents.y, halfExtents.z)
+      .setTranslation(0, offsetY, 0)
+      .setCollisionGroups(groups(COLLISION_GROUP.VEHICLE, COLLISION_GROUP.VEHICLE));
+    this.world.createCollider(desc, body);
+    return body;
+  }
+
   step(): void {
     this.world.step();
   }

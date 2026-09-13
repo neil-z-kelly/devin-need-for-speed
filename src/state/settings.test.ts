@@ -13,14 +13,15 @@ describe('settings persistence', () => {
   it('round-trips through storage', () => {
     const storage = memoryStorage();
     expect(hasSavedSettings(storage)).toBe(false);
-    saveSettings({ quality: 'low', masterVolume: 0.2, paintIndex: 3, showPerf: true }, storage);
+    const saved = { quality: 'low', masterVolume: 0.2, paintIndex: 3, showPerf: true, laps: 5 } as const;
+    saveSettings(saved, storage);
     expect(hasSavedSettings(storage)).toBe(true);
-    expect(loadSettings(storage)).toEqual({ quality: 'low', masterVolume: 0.2, paintIndex: 3, showPerf: true });
+    expect(loadSettings(storage)).toEqual(saved);
   });
 
   it('falls back field by field when stored values are invalid', () => {
-    const storage = memoryStorage({ 'nfs.settings.v1': JSON.stringify({ quality: 'insane', masterVolume: 4, paintIndex: 99, showPerf: 'yes' }) });
-    expect(loadSettings(storage)).toEqual({ quality: 'high', masterVolume: 1, paintIndex: 0, showPerf: false });
+    const storage = memoryStorage({ 'nfs.settings.v1': JSON.stringify({ quality: 'insane', masterVolume: 4, paintIndex: 99, showPerf: 'yes', laps: 7 }) });
+    expect(loadSettings(storage)).toEqual({ quality: 'high', masterVolume: 1, paintIndex: 0, showPerf: false, laps: 3 });
   });
 
   it('ignores corrupt JSON and missing storage', () => {

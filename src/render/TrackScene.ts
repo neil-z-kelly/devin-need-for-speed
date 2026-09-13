@@ -113,17 +113,17 @@ export class TrackScene {
       buildStrip(track, { left: flat(half + 8, TUNNEL_H + 3), right: flat(half + 1.2, TUNNEL_H), filter: isTunnel, vScale: 6 }),
     ];
     this.add(mergeGeometries(tunnel), tunnelMat, true);
-    const tunnelLightMat = new MeshBasicMaterial({ color: new Color('#ffb648'), toneMapped: false });
-    this.add(buildStrip(track, { left: flat(0.4, TUNNEL_H - 0.05), right: flat(-0.4, TUNNEL_H - 0.05), filter: isTunnel }), tunnelLightMat, false);
+    const tunnelLightMat = new MeshBasicMaterial({ color: new Color('#ffcf7a') });
+    this.add(buildStrip(track, { left: flat(0.25, TUNNEL_H - 0.05), right: flat(-0.25, TUNNEL_H - 0.05), filter: isTunnel }), tunnelLightMat, false);
 
     this.waterNormal = createWaterNormal();
     const waterMat = new MeshStandardMaterial({
       color: new Color('#0a1a2a'),
-      roughness: 0.08,
+      roughness: 0.18,
       metalness: 0.9,
       normalMap: this.waterNormal,
       envMap,
-      envMapIntensity: 1.6,
+      envMapIntensity: 0.7,
     });
     waterMat.normalScale.set(0.35, 0.35);
     const water = buildStrip(track, { left: flat(half + SIDEWALK_W + 6, -2.4), right: flat(half + 500, -2.4), filter: isWaterfront, vScale: 40 });
@@ -209,6 +209,8 @@ export class TrackScene {
       const z = centerZ + Math.sin(angle) * dist;
       const near = track.nearest(x, z);
       if (Math.abs(near.lateral) < 70) continue;
+      const onHarbor = isWaterfront(near.frame) && near.lateral > 0 && near.lateral < 380;
+      if (onHarbor) continue;
       const w = 30 + skyRng() * 40;
       const d = 30 + skyRng() * 40;
       const h = 60 + Math.pow(skyRng(), 1.4) * 220;

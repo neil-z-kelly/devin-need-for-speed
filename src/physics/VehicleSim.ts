@@ -43,7 +43,8 @@ export interface VehicleSpec {
   suspensionCompression: number;
   suspensionRelaxation: number;
   maxSuspensionTravel: number;
-  frictionSlip: number;
+  frontFrictionSlip: number;
+  rearFrictionSlip: number;
   handbrakeFrictionSlip: number;
   sideFrictionStiffness: number;
   brakeForce: number;
@@ -65,7 +66,8 @@ export const FERRARI_SPEC: VehicleSpec = {
   suspensionCompression: 3.4,
   suspensionRelaxation: 4.2,
   maxSuspensionTravel: 0.2,
-  frictionSlip: 2.6,
+  frontFrictionSlip: 1.15,
+  rearFrictionSlip: 2.6,
   handbrakeFrictionSlip: 1.1,
   sideFrictionStiffness: 1,
   brakeForce: 6500,
@@ -148,7 +150,7 @@ export class VehicleSim {
       this.controller.setWheelSuspensionCompression(i, spec.suspensionCompression);
       this.controller.setWheelSuspensionRelaxation(i, spec.suspensionRelaxation);
       this.controller.setWheelMaxSuspensionTravel(i, spec.maxSuspensionTravel);
-      this.controller.setWheelFrictionSlip(i, spec.frictionSlip);
+      this.controller.setWheelFrictionSlip(i, spec.wheels[i].steered ? spec.frontFrictionSlip : spec.rearFrictionSlip);
       this.controller.setWheelSideFrictionStiffness(i, spec.sideFrictionStiffness);
       this.controller.setWheelMaxSuspensionForce(i, 60000);
     }
@@ -201,8 +203,8 @@ export class VehicleSim {
       let wheelBrake = brake / 4 + rollingBrake;
       if (c.handbrake && !w.steered) wheelBrake += this.spec.handbrakeForce / 2;
       this.controller.setWheelBrake(i, wheelBrake);
-      const slip = c.handbrake && !w.steered ? this.spec.handbrakeFrictionSlip : this.spec.frictionSlip;
-      this.controller.setWheelFrictionSlip(i, slip);
+      const grip = w.steered ? this.spec.frontFrictionSlip : c.handbrake ? this.spec.handbrakeFrictionSlip : this.spec.rearFrictionSlip;
+      this.controller.setWheelFrictionSlip(i, grip);
     }
 
     const rot = this.body.rotation();
@@ -237,6 +239,12 @@ export class VehicleSim {
     const v = this.body.linvel();
     const fwd = rotateVec({ x: 0, y: 0, z: 1 }, this.body.rotation());
     return v.x * fwd.x + v.y * fwd.y + v.z * fwd.z;
+  }
+
+  /** Yaw of the chassis forward axis, matching `Math.atan2(forward.x, forward.z)` on track frames. */
+  heading(): number {
+    const fwd = rotateVec({ x: 0, y: 0, z: 1 }, this.body.rotation());
+    return Math.atan2(fwd.x, fwd.z);
   }
 
   grounded(): boolean {
