@@ -70,7 +70,7 @@ export class Input {
   }
 
   private onKeyDown = (e: KeyboardEvent): void => {
-    if (e.repeat) return;
+    if (e.repeat || e.target instanceof HTMLInputElement) return;
     this.down.add(e.code);
     this.pressedEdges.add(e.code);
     if (e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault();

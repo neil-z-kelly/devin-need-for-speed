@@ -66,7 +66,7 @@ export const FERRARI_SPEC: VehicleSpec = {
   suspensionCompression: 3.4,
   suspensionRelaxation: 4.2,
   maxSuspensionTravel: 0.2,
-  frontFrictionSlip: 1.15,
+  frontFrictionSlip: 0.55,
   rearFrictionSlip: 2.6,
   handbrakeFrictionSlip: 1.1,
   sideFrictionStiffness: 1,
@@ -192,7 +192,8 @@ export class VehicleSim {
     }
     const rollingBrake = c.throttle === 0 && c.brake === 0 ? 120 : 0;
 
-    const targetSteer = c.steer * maxSteerAngle(this.speed);
+    // Rapier's positive wheel steering yaws toward chassis +X, the left side of a +Z-forward car.
+    const targetSteer = -c.steer * maxSteerAngle(this.speed);
     this.steerAngle = damp(this.steerAngle, targetSteer, 14, dt);
 
     const drivenCount = this.spec.wheels.filter((w) => w.driven).length;
