@@ -2,6 +2,9 @@ import { Store } from './store';
 
 export type QualityLevel = 'low' | 'medium' | 'high' | 'ultra';
 
+/** reduced: decimated player (88k triangles) and opponent (24k) meshes instead of the 359k original. */
+export type CarDetail = 'full' | 'reduced';
+
 export const QUALITY_LEVELS: readonly QualityLevel[] = ['low', 'medium', 'high', 'ultra'];
 
 export interface QualityProfile {
@@ -16,11 +19,14 @@ export interface QualityProfile {
   anisotropy: number;
   drawDistance: number;
   skylineDensity: number;
+  carDetail: CarDetail;
+  /** Scenery fill (buildings, ground, tunnel) uses Lambert instead of PBR shading; aimed at software (CPU) WebGL. */
+  cheapShading: boolean;
 }
 
 export const QUALITY_PROFILES: Record<QualityLevel, QualityProfile> = {
   low: {
-    pixelRatio: 0.66,
+    pixelRatio: 0.5,
     shadows: false,
     shadowMapSize: 1024,
     postProcessing: false,
@@ -30,6 +36,8 @@ export const QUALITY_PROFILES: Record<QualityLevel, QualityProfile> = {
     anisotropy: 2,
     drawDistance: 420,
     skylineDensity: 0.5,
+    carDetail: 'reduced',
+    cheapShading: true,
   },
   medium: {
     pixelRatio: 1,
@@ -42,6 +50,8 @@ export const QUALITY_PROFILES: Record<QualityLevel, QualityProfile> = {
     anisotropy: 4,
     drawDistance: 600,
     skylineDensity: 0.75,
+    carDetail: 'full',
+    cheapShading: false,
   },
   high: {
     pixelRatio: 1,
@@ -54,6 +64,8 @@ export const QUALITY_PROFILES: Record<QualityLevel, QualityProfile> = {
     anisotropy: 8,
     drawDistance: 800,
     skylineDensity: 1,
+    carDetail: 'full',
+    cheapShading: false,
   },
   ultra: {
     pixelRatio: 1.5,
@@ -66,6 +78,8 @@ export const QUALITY_PROFILES: Record<QualityLevel, QualityProfile> = {
     anisotropy: 16,
     drawDistance: 1000,
     skylineDensity: 1,
+    carDetail: 'full',
+    cheapShading: false,
   },
 };
 

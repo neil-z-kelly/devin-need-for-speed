@@ -111,6 +111,7 @@ function PerfPanel() {
   const fps = useStore(hudStore, (s) => s.fps);
   const frameMs = useStore(hudStore, (s) => s.frameMs);
   const worst = useStore(hudStore, (s) => s.worst1PercentMs);
+  const scriptMs = useStore(hudStore, (s) => s.scriptMs);
   const drawCalls = useStore(hudStore, (s) => s.drawCalls);
   const triangles = useStore(hudStore, (s) => s.triangles);
   const gpu = useStore(hudStore, (s) => s.gpu);
@@ -123,6 +124,7 @@ function PerfPanel() {
       <div>
         frame {frameMs.toFixed(1)} ms, worst 1% {worst.toFixed(1)} ms
       </div>
+      <div>script {scriptMs.toFixed(1)} ms</div>
       <div>
         {drawCalls} draw calls, {(triangles / 1000).toFixed(0)}k tris
       </div>

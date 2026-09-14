@@ -85,6 +85,7 @@ export interface HudState {
   fps: number;
   frameMs: number;
   worst1PercentMs: number;
+  scriptMs: number;
   drawCalls: number;
   triangles: number;
   gpu: string;
@@ -115,6 +116,7 @@ export const hudStore = new Store<HudState>({
   fps: 0,
   frameMs: 0,
   worst1PercentMs: 0,
+  scriptMs: 0,
   drawCalls: 0,
   triangles: 0,
   gpu: '',

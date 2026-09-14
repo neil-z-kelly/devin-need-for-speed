@@ -11,7 +11,7 @@ import { ChaseCamera } from '../render/ChaseCamera';
 import { Renderer, probeGpu } from '../render/Renderer';
 import { TrackScene } from '../render/TrackScene';
 import { loadBestTimes, recordBestTimes, type BestTimes } from '../state/bestTimes';
-import { PAINT_COLORS, QUALITY_PROFILES, hasSavedSettings, isQuality, settingsStore, type QualityLevel, type Settings } from '../state/settings';
+import { PAINT_COLORS, QUALITY_PROFILES, hasSavedSettings, isQuality, settingsStore, type CarDetail, type QualityLevel, type Settings } from '../state/settings';
 import { hudStore, type Standing } from '../state/store';
 import { PerfMonitor } from '../telemetry/PerfMonitor';
 import { HARBOR_CIRCUIT, Track, wrapS } from '../track/track';
@@ -38,7 +38,10 @@ declare global {
 }
 
 const STEP_DT = 1 / 60;
-const CAR_URL = '/assets/car/ferrari.glb';
+const CAR_URLS: Record<CarDetail, { player: string; opponent: string }> = {
+  full: { player: '/assets/car/ferrari.glb', opponent: '/assets/car/ferrari.glb' },
+  reduced: { player: '/assets/car/ferrari_mid.glb', opponent: '/assets/car/ferrari_lod.glb' },
+};
 const ENV_URL = '/assets/env/venice_sunset_1k.hdr';
 const COUNTDOWN_SECONDS = 3;
 const GRID_GAP = 7;
@@ -124,7 +127,10 @@ export class Game {
     this.minimap = new Minimap(this.minimapCanvas, this.track);
 
     setLoading(0.6, 'Loading car');
-    const asset = await CarModel.loadAsset(CAR_URL, (f) => setLoading(0.6 + f * 0.35, 'Loading car'));
+    const urls = CAR_URLS[profile.carDetail];
+    const asset = await CarModel.loadAsset(urls.player, (f) => setLoading(0.6 + f * 0.35, 'Loading car'));
+    if (this.disposed) return;
+    const opponentAsset = urls.opponent === urls.player ? asset : await CarModel.loadAsset(urls.opponent);
     if (this.disposed) return;
     const car = new CarModel(asset, { envMap: renderer.environment, castShadow: profile.shadows, headlights: profile.streetLightCount > 0 });
     car.setPaint(PAINT_COLORS[settings.paintIndex].hex);
@@ -134,7 +140,7 @@ export class Game {
     this.vehicle = new VehicleSim(physics, FERRARI_SPEC, this.trackPose(playerSlot.s, playerSlot.lateral));
 
     this.aiCars = AI_ROSTER.map((entry, i) => {
-      const model = new CarModel(asset, { envMap: renderer.environment, castShadow: profile.shadows, headlights: false });
+      const model = new CarModel(opponentAsset, { envMap: renderer.environment, castShadow: profile.shadows, headlights: false });
       model.setPaint(entry.paint);
       renderer.scene.add(model.root);
       const pose = this.gridPose(i);
@@ -157,7 +163,16 @@ export class Game {
     setLoading(1, 'Ready');
     hudStore.set({ phase: 'menu', showPerf: settings.showPerf });
 
-    this.loop = new FixedStepLoop({ simulate: (dt) => this.simulate(dt), render: (alpha, frameDt) => this.render(alpha, frameDt) }, STEP_DT);
+    this.loop = new FixedStepLoop(
+      {
+        simulate: (dt) => this.perf.time(() => this.simulate(dt)),
+        render: (alpha, frameDt) => {
+          this.perf.time(() => this.render(alpha, frameDt));
+          this.perf.endFrame(performance.now());
+        },
+      },
+      STEP_DT,
+    );
     this.loop.start();
   }
 
@@ -324,7 +339,6 @@ export class Game {
     const vehicle = this.vehicle;
     const chase = this.chase;
     if (!renderer || !car || !vehicle || !chase || !this.trackScene) return;
-    this.perf.beginFrame(performance.now());
 
     this.elapsed += frameDt;
     this.syncCarVisual(alpha);
@@ -356,6 +370,7 @@ export class Game {
       fps: snap.fps,
       frameMs: snap.frameMs,
       worst1PercentMs: snap.worst1PercentMs,
+      scriptMs: snap.scriptMs,
       drawCalls: snap.drawCalls,
       triangles: snap.triangles,
       lap: lapStart === null ? 0 : Math.min(lapTimes.length + 1, this.raceConfig.laps),

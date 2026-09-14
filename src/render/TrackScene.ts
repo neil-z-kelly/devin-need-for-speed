@@ -7,11 +7,13 @@ import {
   Matrix4,
   Mesh,
   MeshBasicMaterial,
+  MeshLambertMaterial,
   MeshStandardMaterial,
   Quaternion,
   SphereGeometry,
   Vector3,
   type BufferGeometry,
+  type Material,
   type Texture,
 } from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -26,6 +28,7 @@ export interface SceneQuality {
   anisotropy: number;
   skylineDensity: number;
   shadows: boolean;
+  cheapShading: boolean;
 }
 
 export interface StreetLamp {
@@ -37,6 +40,18 @@ const isTunnel = (f: TrackFrame) => f.section === 'tunnel';
 const isHillside = (f: TrackFrame) => f.section === 'hillside';
 const isDowntown = (f: TrackFrame) => f.section === 'downtown';
 const isWaterfront = (f: TrackFrame) => f.section === 'waterfront';
+
+/** Normal-mapped surfaces (wet road, water) stay PBR: they carry the look, the rest is fill. */
+function toLambert(mat: MeshStandardMaterial | MeshBasicMaterial): Material {
+  if (!(mat instanceof MeshStandardMaterial) || mat.normalMap) return mat;
+  return new MeshLambertMaterial({
+    color: mat.color,
+    map: mat.map,
+    emissive: mat.emissive,
+    emissiveMap: mat.emissiveMap,
+    emissiveIntensity: mat.emissiveIntensity,
+  });
+}
 
 const SIDEWALK_W = 4;
 const SIDEWALK_H = 0.15;
@@ -50,9 +65,9 @@ const TUNNEL_H = 6.5;
 export class TrackScene {
   readonly root = new Group();
   readonly lamps: StreetLamp[] = [];
-  readonly waterMaterial: MeshStandardMaterial;
   private readonly disposables: Array<{ dispose(): void }> = [];
   private readonly waterNormal: Texture;
+  private readonly cheapShading: boolean;
 
   constructor(
     readonly track: Track,
@@ -60,6 +75,7 @@ export class TrackScene {
     quality: SceneQuality,
     envMap: Texture | null,
   ) {
+    this.cheapShading = quality.cheapShading;
     const W = track.def.roadWidth;
     const half = W / 2;
     const aniso = quality.anisotropy;
@@ -128,7 +144,6 @@ export class TrackScene {
     waterMat.normalScale.set(0.35, 0.35);
     const water = buildStrip(track, { left: flat(half + SIDEWALK_W + 6, -2.4), right: flat(half + 500, -2.4), filter: isWaterfront, vScale: 40 });
     this.add(water, waterMat, false);
-    this.waterMaterial = waterMat;
     const seawall = [
       buildStrip(track, { left: flat(half + SIDEWALK_W, SIDEWALK_H), right: flat(half + SIDEWALK_W + 6, SIDEWALK_H), filter: isWaterfront, vScale: 6 }),
       buildStrip(track, { left: flat(half + SIDEWALK_W + 6, SIDEWALK_H), right: flat(half + SIDEWALK_W + 6, -2.6), filter: isWaterfront, vScale: 6 }),
@@ -150,11 +165,11 @@ export class TrackScene {
   }
 
   private add(geo: BufferGeometry, mat: MeshStandardMaterial | MeshBasicMaterial, receiveShadow: boolean): Mesh {
-    const mesh = new Mesh(geo, mat);
+    const mesh = new Mesh(geo, this.cheapShading ? toLambert(mat) : mat);
     mesh.receiveShadow = receiveShadow;
     mesh.matrixAutoUpdate = false;
     this.root.add(mesh);
-    this.disposables.push(geo, mat);
+    this.disposables.push(geo, mesh.material);
     return mesh;
   }
 

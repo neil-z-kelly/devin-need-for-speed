@@ -10,6 +10,7 @@
     "typecheck": "tsc -b --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
+    "build:car-lod": "node scripts/make-car-lod.mjs public/assets/car/ferrari_lod.glb 0.08 sloppy 0.5 && node scripts/make-car-lod.mjs public/assets/car/ferrari_mid.glb 0.25 quality 0.005",
     "check": "npm run typecheck && npm run lint && npm run test"
   },
   "dependencies": {
@@ -20,6 +21,11 @@
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@gltf-transform/core": "4.4.2",
+    "@gltf-transform/extensions": "4.4.2",
+    "@gltf-transform/functions": "4.4.2",
+    "draco3dgltf": "1.5.7",
+    "meshoptimizer": "1.2.0",
     "@types/node": "^22.20.1",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",

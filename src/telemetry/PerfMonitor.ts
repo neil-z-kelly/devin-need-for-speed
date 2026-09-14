@@ -3,6 +3,8 @@ export interface PerfSnapshot {
   frameMs: number;
   /** Average of the slowest 1% of frames in the window (ms). */
   worst1PercentMs: number;
+  /** Main-thread time per frame inside `time()` (simulation, scene update, draw submission); the rest of `frameMs` is spent waiting on the GPU. */
+  scriptMs: number;
   drawCalls: number;
   triangles: number;
   simSteps: number;
@@ -29,8 +31,10 @@ declare global {
  */
 export class PerfMonitor {
   private readonly frameTimes: number[] = [];
+  private readonly scriptTimes: number[] = [];
   private readonly windowSize: number;
   private lastNow: number | null = null;
+  private busyMs = 0;
   drawCalls = 0;
   triangles = 0;
   simSteps = 0;
@@ -45,17 +49,28 @@ export class PerfMonitor {
     }
   }
 
-  beginFrame(now: number): void {
+  time(work: () => void): void {
+    const t0 = performance.now();
+    work();
+    this.busyMs += performance.now() - t0;
+  }
+
+  endFrame(now: number): void {
     if (this.lastNow !== null) {
       this.frameTimes.push(now - this.lastNow);
+      this.scriptTimes.push(this.busyMs);
       if (this.frameTimes.length > this.windowSize) this.frameTimes.shift();
+      if (this.scriptTimes.length > this.windowSize) this.scriptTimes.shift();
     }
     this.lastNow = now;
+    this.busyMs = 0;
   }
 
   reset(): void {
     this.frameTimes.length = 0;
+    this.scriptTimes.length = 0;
     this.lastNow = null;
+    this.busyMs = 0;
   }
 
   snapshot(): PerfSnapshot {
@@ -65,6 +80,7 @@ export class PerfMonitor {
         fps: 0,
         frameMs: 0,
         worst1PercentMs: 0,
+        scriptMs: 0,
         drawCalls: this.drawCalls,
         triangles: this.triangles,
         simSteps: this.simSteps,
@@ -81,10 +97,13 @@ export class PerfMonitor {
     let worstSum = 0;
     for (let i = 0; i < worstCount; i++) worstSum += sorted[i];
     const frameMs = sum / n;
+    let scriptSum = 0;
+    for (const t of this.scriptTimes) scriptSum += t;
     return {
       fps: 1000 / frameMs,
       frameMs,
       worst1PercentMs: worstSum / worstCount,
+      scriptMs: scriptSum / n,
       drawCalls: this.drawCalls,
       triangles: this.triangles,
       simSteps: this.simSteps,
