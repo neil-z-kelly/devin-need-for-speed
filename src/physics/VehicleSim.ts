@@ -66,7 +66,7 @@ export const FERRARI_SPEC: VehicleSpec = {
   suspensionCompression: 3.4,
   suspensionRelaxation: 4.2,
   maxSuspensionTravel: 0.2,
-  frontFrictionSlip: 0.55,
+  frontFrictionSlip: 2.6,
   rearFrictionSlip: 2.6,
   handbrakeFrictionSlip: 1.1,
   sideFrictionStiffness: 1,
