@@ -2,7 +2,7 @@ import { Store } from './store';
 
 export type QualityLevel = 'low' | 'medium' | 'high' | 'ultra';
 
-/** reduced: decimated player (88k triangles) and opponent (24k) meshes instead of the 359k original. */
+/** reduced: opponents use the 24k-triangle decimated mesh instead of the 359k original. */
 export type CarDetail = 'full' | 'reduced';
 
 export const QUALITY_LEVELS: readonly QualityLevel[] = ['low', 'medium', 'high', 'ultra'];

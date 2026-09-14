@@ -10,7 +10,7 @@
     "typecheck": "tsc -b --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
-    "build:car-lod": "node scripts/make-car-lod.mjs public/assets/car/ferrari_lod.glb 0.08 sloppy 0.5 && node scripts/make-car-lod.mjs public/assets/car/ferrari_mid.glb 0.25 quality 0.005",
+    "build:car-lod": "node scripts/make-car-lod.mjs public/assets/car/ferrari_lod.glb 0.08 sloppy 0.5",
     "check": "npm run typecheck && npm run lint && npm run test"
   },
   "dependencies": {

@@ -40,7 +40,7 @@ declare global {
 const STEP_DT = 1 / 60;
 const CAR_URLS: Record<CarDetail, { player: string; opponent: string }> = {
   full: { player: '/assets/car/ferrari.glb', opponent: '/assets/car/ferrari.glb' },
-  reduced: { player: '/assets/car/ferrari_mid.glb', opponent: '/assets/car/ferrari_lod.glb' },
+  reduced: { player: '/assets/car/ferrari.glb', opponent: '/assets/car/ferrari_lod.glb' },
 };
 const ENV_URL = '/assets/env/venice_sunset_1k.hdr';
 const COUNTDOWN_SECONDS = 3;
