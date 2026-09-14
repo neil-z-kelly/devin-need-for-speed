@@ -167,8 +167,8 @@ canvas.game {
 
 .perf {
   position: absolute;
-  left: 22px;
-  top: 20px;
+  left: 34px;
+  bottom: 34px;
   padding: 12px 16px;
   min-width: 260px;
   background: var(--glass);
