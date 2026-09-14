@@ -1,9 +1,10 @@
 import type { Game } from '../game/Game';
 import { formatTime } from '../race/RaceRules';
 import { loadBestTimes } from '../state/bestTimes';
-import { LAP_OPTIONS, PAINT_COLORS, QUALITY_LEVELS, settingsStore, type QualityLevel } from '../state/settings';
+import { LAP_OPTIONS, PAINT_COLORS, QUALITY_LEVELS, VEHICLES, settingsStore, type QualityLevel } from '../state/settings';
 import { hudStore, useStore } from '../state/store';
 import { ControlsList } from './ControlsList';
+import { VehicleIcon } from './VehicleIcon';
 
 export function Menu({ game }: { game: Game }) {
   const quality = useStore(settingsStore, (s) => s.quality);
@@ -11,6 +12,7 @@ export function Menu({ game }: { game: Game }) {
   const paintIndex = useStore(settingsStore, (s) => s.paintIndex);
   const showPerf = useStore(settingsStore, (s) => s.showPerf);
   const laps = useStore(settingsStore, (s) => s.laps);
+  const vehicle = useStore(settingsStore, (s) => s.vehicle);
   const gpu = useStore(hudStore, (s) => s.gpu);
   const best = loadBestTimes();
 
@@ -29,6 +31,27 @@ export function Menu({ game }: { game: Game }) {
         <button className="primary" onClick={() => game.startRace()}>
           Start Race
         </button>
+
+        <section>
+          <h3>Vehicle</h3>
+          <div className="vehicles" role="radiogroup" aria-label="Vehicle">
+            {VEHICLES.map((v) => (
+              <button
+                key={v.id}
+                role="radio"
+                aria-checked={v.id === vehicle}
+                data-vehicle={v.id}
+                className={`vehicle-btn${v.id === vehicle ? ' selected' : ''}`}
+                onClick={() => settingsStore.set({ vehicle: v.id })}
+              >
+                <VehicleIcon kind={v.id} paint={PAINT_COLORS[paintIndex].hex} />
+                <b>{v.name}</b>
+                <span>{v.blurb}</span>
+              </button>
+            ))}
+          </div>
+          <div className="muted small">The garage behind the menu shows your pick in your chosen paint.</div>
+        </section>
 
         <section>
           <h3>Race Length</h3>

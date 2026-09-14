@@ -1,8 +1,8 @@
-import { Quaternion, Vector3 } from 'three';
+import { Quaternion, Vector3, type Group } from 'three';
 import { RaceAudio } from '../audio/RaceAudio';
 import { Input } from '../input/Input';
 import { PhysicsWorld, loadRapier } from '../physics/PhysicsWorld';
-import { FERRARI_SPEC, VehicleSim, type Pose } from '../physics/VehicleSim';
+import { FERRARI_SPEC, type Pose } from '../physics/VehicleSim';
 import { AI_ROSTER } from '../race/AiDriver';
 import { AiCar } from '../race/AiCar';
 import { bestLap, newProgress, raceDistance, standings, updateProgress, type CarProgress, type RaceConfig } from '../race/RaceRules';
@@ -18,6 +18,7 @@ import { HARBOR_CIRCUIT, Track, wrapS } from '../track/track';
 import { Minimap } from '../ui/Minimap';
 import { KMH_PER_MS } from '../util/math';
 import { FixedStepLoop } from './FixedStepLoop';
+import { PlayerVehicle } from './PlayerVehicle';
 
 /** Player car relative to the track; exposed on `window.__nfsDrive` for scripted driving and handling measurements. */
 export interface DriveTelemetry {
@@ -57,9 +58,7 @@ function pickQuality(gpu: string): QualityLevel {
   return settingsStore.get().quality;
 }
 
-const tmpPos = new Vector3();
 const tmpQuat = new Quaternion();
-const prevQuat = new Quaternion();
 const UP = new Vector3(0, 1, 0);
 const HOLD = { throttle: 0, brake: 0, steer: 0, handbrake: true, nitrous: false };
 
@@ -70,8 +69,8 @@ const HOLD = { throttle: 0, brake: 0, steer: 0, handbrake: true, nitrous: false 
 export class Game {
   private renderer: Renderer | null = null;
   private physics: PhysicsWorld | null = null;
-  private vehicle: VehicleSim | null = null;
-  private car: CarModel | null = null;
+  private player: PlayerVehicle | null = null;
+  private carAsset: Group | null = null;
   private trackScene: TrackScene | null = null;
   private chase: ChaseCamera | null = null;
   private loop: FixedStepLoop | null = null;
@@ -132,12 +131,8 @@ export class Game {
     if (this.disposed) return;
     const opponentAsset = urls.opponent === urls.player ? asset : await CarModel.loadAsset(urls.opponent);
     if (this.disposed) return;
-    const car = new CarModel(asset, { envMap: renderer.environment, castShadow: profile.shadows, headlights: profile.streetLightCount > 0 });
-    car.setPaint(PAINT_COLORS[settings.paintIndex].hex);
-    renderer.scene.add(car.root);
-    this.car = car;
-    const playerSlot = this.gridPose(AI_ROSTER.length);
-    this.vehicle = new VehicleSim(physics, FERRARI_SPEC, this.trackPose(playerSlot.s, playerSlot.lateral));
+    this.carAsset = asset;
+    this.spawnPlayer(settings.vehicle);
 
     this.aiCars = AI_ROSTER.map((entry, i) => {
       const model = new CarModel(opponentAsset, { envMap: renderer.environment, castShadow: profile.shadows, headlights: false });
@@ -150,12 +145,11 @@ export class Game {
 
     const chase = new ChaseCamera(renderer.camera);
     this.chase = chase;
-    this.syncCarVisual(1);
-    chase.snap({ position: car.root.position, quaternion: car.root.quaternion, speed: 0 });
+    this.snapCamera();
 
     this.unsubscribeSettings = settingsStore.subscribe(() => this.applySettings(settingsStore.get()));
     window.__nfsDrive = () => this.driveTelemetry();
-    window.__nfsTeleport = (s) => this.vehicle!.teleport(this.trackPose(s, 0));
+    window.__nfsTeleport = (s) => this.player!.sim.teleport(this.trackPose(s, 0));
     this.input.attach();
     window.addEventListener('resize', this.onResize);
     renderer.resize();
@@ -182,7 +176,7 @@ export class Game {
     this.placeGrid();
     this.raceTime = 0;
     this.countdown = COUNTDOWN_SECONDS;
-    this.chase?.snap({ position: this.car!.root.position, quaternion: this.car!.root.quaternion, speed: 0 });
+    this.snapCamera();
     hudStore.set({ phase: 'countdown', countdown: COUNTDOWN_SECONDS, result: null, lap: 0, totalLaps: this.raceConfig.laps, lapTime: 0, lastLapTime: null, wrongWay: false });
     this.canvas.focus();
   }
@@ -201,9 +195,42 @@ export class Game {
   private readonly onResize = () => this.renderer?.resize();
 
   private applySettings(s: Settings): void {
-    this.car?.setPaint(PAINT_COLORS[s.paintIndex].hex);
+    if (this.player && s.vehicle !== this.player.kind && hudStore.get().phase === 'menu') {
+      this.spawnPlayer(s.vehicle);
+      this.snapCamera();
+    }
+    this.player?.visual.setPaint(PAINT_COLORS[s.paintIndex].hex);
     this.audio.setVolume(s.masterVolume);
     hudStore.set({ showPerf: s.showPerf });
+  }
+
+  /** Builds (or rebuilds) the player's physics body and model for the selected vehicle and parks it on the grid. */
+  private spawnPlayer(kind: Settings['vehicle']): void {
+    const renderer = this.renderer!;
+    const profile = QUALITY_PROFILES[settingsStore.get().quality];
+    if (this.player) {
+      renderer.scene.remove(this.player.root);
+      this.player.dispose();
+    }
+    const slot = this.gridPose(AI_ROSTER.length);
+    const player = new PlayerVehicle(kind, {
+      physics: this.physics!,
+      spawn: this.trackPose(slot.s, slot.lateral),
+      carAsset: this.carAsset!,
+      envMap: renderer.environment,
+      castShadow: profile.shadows,
+      headlights: profile.streetLightCount > 0,
+    });
+    player.visual.setPaint(PAINT_COLORS[settingsStore.get().paintIndex].hex);
+    renderer.scene.add(player.root);
+    this.player = player;
+    this.placeGrid();
+    player.syncVisual(1, 0);
+  }
+
+  private snapCamera(): void {
+    const root = this.player?.root;
+    if (root) this.chase?.snap({ position: root.position, quaternion: root.quaternion, speed: 0 });
   }
 
   /** Grid slot 0 is the front row; the player takes the last slot. */
@@ -219,7 +246,7 @@ export class Game {
       ai.place();
     });
     const player = this.gridPose(this.aiCars.length);
-    const vehicle = this.vehicle!;
+    const vehicle = this.player!.sim;
     vehicle.teleport(this.trackPose(player.s, player.lateral));
     for (let i = 0; i < 30; i++) {
       vehicle.step(STEP_DT, HOLD);
@@ -231,7 +258,7 @@ export class Game {
   }
 
   private driveTelemetry(): DriveTelemetry {
-    const vehicle = this.vehicle!;
+    const vehicle = this.player!.sim;
     const p = vehicle.position();
     const near = this.track.nearest(p.x, p.z, this.nearestHint);
     const roadYaw = Math.atan2(near.frame.forward.x, near.frame.forward.z);
@@ -248,7 +275,7 @@ export class Game {
   }
 
   private simulate(dt: number): void {
-    const vehicle = this.vehicle;
+    const vehicle = this.player?.sim;
     const physics = this.physics;
     if (!vehicle || !physics) return;
     this.input.update(dt);
@@ -335,20 +362,20 @@ export class Game {
 
   private render(alpha: number, frameDt: number): void {
     const renderer = this.renderer;
-    const car = this.car;
-    const vehicle = this.vehicle;
+    const player = this.player;
     const chase = this.chase;
-    if (!renderer || !car || !vehicle || !chase || !this.trackScene) return;
+    if (!renderer || !player || !chase || !this.trackScene) return;
+    const vehicle = player.sim;
+    const car = player.root;
 
     this.elapsed += frameDt;
-    this.syncCarVisual(alpha);
-    car.updateWheels(vehicle.wheels, vehicle.spec);
-    car.setBraking(this.input.state.brake > 0 && !vehicle.reversing);
-    const target = { position: car.root.position, quaternion: car.root.quaternion, speed: vehicle.speed };
+    player.syncVisual(alpha, frameDt);
+    player.visual.setBraking(this.input.state.brake > 0 && !vehicle.reversing);
+    const target = { position: car.position, quaternion: car.quaternion, speed: vehicle.speed };
     if (hudStore.get().phase === 'menu') chase.orbit(target, this.elapsed);
     else chase.update(target, frameDt);
     this.trackScene.update(this.elapsed);
-    renderer.updateLighting(car.root.position, this.trackScene.lamps);
+    renderer.updateLighting(car.position, this.trackScene.lamps);
     renderer.render();
 
     this.perf.drawCalls = renderer.drawCalls;
@@ -379,7 +406,7 @@ export class Game {
       ...this.standingsPatch(),
     });
     this.minimap?.draw([
-      { x: car.root.position.x, z: car.root.position.z, color: PAINT_COLORS[settingsStore.get().paintIndex].hex, isPlayer: true },
+      { x: car.position.x, z: car.position.z, color: PAINT_COLORS[settingsStore.get().paintIndex].hex, isPlayer: true },
       ...this.aiCars.map((ai) => ({ x: ai.model.root.position.x, z: ai.model.root.position.z, color: ai.model.bodyMaterial.color.getStyle(), isPlayer: false })),
     ]);
   }
@@ -399,20 +426,6 @@ export class Game {
     return { position: order.indexOf(0) + 1, standings: rows };
   }
 
-  private syncCarVisual(alpha: number): void {
-    const vehicle = this.vehicle;
-    const car = this.car;
-    if (!vehicle || !car) return;
-    const a = vehicle.prevPose;
-    const b = vehicle.pose;
-    tmpPos.set(a.x + (b.x - a.x) * alpha, a.y + (b.y - a.y) * alpha, a.z + (b.z - a.z) * alpha);
-    prevQuat.set(a.qx, a.qy, a.qz, a.qw);
-    tmpQuat.set(b.qx, b.qy, b.qz, b.qw);
-    prevQuat.slerp(tmpQuat, alpha);
-    car.root.position.copy(tmpPos);
-    car.root.quaternion.copy(prevQuat);
-  }
-
   dispose(): void {
     this.disposed = true;
     this.loop?.stop();
@@ -422,8 +435,7 @@ export class Game {
     this.unsubscribeSettings?.();
     this.input.detach();
     this.audio.dispose();
-    this.vehicle?.dispose();
-    this.car?.dispose();
+    this.player?.dispose();
     for (const ai of this.aiCars) ai.model.dispose();
     this.trackScene?.dispose();
     this.physics?.dispose();

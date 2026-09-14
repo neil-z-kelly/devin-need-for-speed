@@ -10,6 +10,7 @@ import {
   reverseForce,
   selectGear,
   type DrivetrainConfig,
+  type SteerLock,
 } from './drivetrain';
 import { clamp, damp } from '../util/math';
 
@@ -49,6 +50,10 @@ export interface VehicleSpec {
   sideFrictionStiffness: number;
   brakeForce: number;
   handbrakeForce: number;
+  /** Speed-dependent steering lock; defaults to the car tuning. */
+  steerLock?: SteerLock;
+  /** Rigid-body angular damping; defaults to the car tuning. */
+  angularDamping?: number;
 }
 
 export const FERRARI_SPEC: VehicleSpec = {
@@ -122,11 +127,12 @@ export class VehicleSim {
     spawn: Pose,
   ) {
     this.R = physics.R;
+    this.rpm = spec.drivetrain.idleRpm;
     const bodyDesc = this.R.RigidBodyDesc.dynamic()
       .setTranslation(spawn.x, spawn.y, spawn.z)
       .setRotation({ x: spawn.qx, y: spawn.qy, z: spawn.qz, w: spawn.qw })
       .setLinearDamping(0.02)
-      .setAngularDamping(1.2)
+      .setAngularDamping(spec.angularDamping ?? 1.2)
       .setCcdEnabled(true);
     this.body = physics.world.createRigidBody(bodyDesc);
     const he = spec.halfExtents;
@@ -193,7 +199,7 @@ export class VehicleSim {
     const rollingBrake = c.throttle === 0 && c.brake === 0 ? 120 : 0;
 
     // Rapier's positive wheel steering yaws toward chassis +X, the left side of a +Z-forward car.
-    const targetSteer = -c.steer * maxSteerAngle(this.speed);
+    const targetSteer = -c.steer * maxSteerAngle(this.speed, this.spec.steerLock);
     this.steerAngle = damp(this.steerAngle, targetSteer, 14, dt);
 
     const drivenCount = this.spec.wheels.filter((w) => w.driven).length;
@@ -246,6 +252,13 @@ export class VehicleSim {
   heading(): number {
     const fwd = rotateVec({ x: 0, y: 0, z: 1 }, this.body.rotation());
     return Math.atan2(fwd.x, fwd.z);
+  }
+
+  /** Angular velocity about the chassis up axis (rad/s); positive turns towards +X (left). */
+  yawRate(): number {
+    const w = this.body.angvel();
+    const up = rotateVec({ x: 0, y: 1, z: 0 }, this.body.rotation());
+    return w.x * up.x + w.y * up.y + w.z * up.z;
   }
 
   grounded(): boolean {
