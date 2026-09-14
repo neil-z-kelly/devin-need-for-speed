@@ -1,8 +1,4 @@
-// Decimates public/assets/car/ferrari.glb into a reduced copy for the low
-// quality profile: vertices are welded by position (keeping the first vertex's
-// normal), each primitive is simplified with meshoptimizer and UVs are dropped
-// (the car materials are untextured).
-//   node scripts/make-car-lod.mjs <dst> <triangle ratio> [quality|sloppy] [max error]
+// UVs are dropped: the car materials are untextured.
 import { NodeIO } from '@gltf-transform/core';
 import { KHRONOS_EXTENSIONS } from '@gltf-transform/extensions';
 import { draco, prune } from '@gltf-transform/functions';

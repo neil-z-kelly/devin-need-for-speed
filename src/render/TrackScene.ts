@@ -41,7 +41,7 @@ const isHillside = (f: TrackFrame) => f.section === 'hillside';
 const isDowntown = (f: TrackFrame) => f.section === 'downtown';
 const isWaterfront = (f: TrackFrame) => f.section === 'waterfront';
 
-/** Normal-mapped surfaces (wet road, water) stay PBR: they carry the look, the rest is fill. */
+/** Normal-mapped surfaces (wet road, water) stay PBR. */
 function toLambert(mat: MeshStandardMaterial | MeshBasicMaterial): Material {
   if (!(mat instanceof MeshStandardMaterial) || mat.normalMap) return mat;
   return new MeshLambertMaterial({
