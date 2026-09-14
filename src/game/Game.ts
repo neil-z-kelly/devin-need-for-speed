@@ -26,6 +26,8 @@ export interface DriveTelemetry {
   lateral: number;
   /** Radians the car points away from the road direction; positive is left, the same side as positive `lateral`. */
   headingError: number;
+  /** Nose-up angle in radians; negative when the vehicle dips forward. */
+  pitch: number;
   speed: number;
   lap: number;
 }
@@ -264,7 +266,14 @@ export class Game {
     const roadYaw = Math.atan2(near.frame.forward.x, near.frame.forward.z);
     const yawDiff = roadYaw - vehicle.heading();
     const headingError = Math.atan2(Math.sin(yawDiff), Math.cos(yawDiff));
-    return { s: near.s, lateral: near.lateral, headingError, speed: vehicle.speed, lap: this.playerProgress.lapTimes.length };
+    return {
+      s: near.s,
+      lateral: near.lateral,
+      headingError,
+      pitch: vehicle.pitch(),
+      speed: vehicle.speed,
+      lap: this.playerProgress.lapTimes.length,
+    };
   }
 
   private trackPose(s: number, lateral: number): Pose {

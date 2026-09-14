@@ -22,7 +22,7 @@ const STIFFNESS = 34;
 /** Static compression under the bike's weight: g / (wheel count * stiffness) in Rapier's normalised suspension units. */
 const REST_COMPRESSION = 9.81 / (4 * STIFFNESS);
 const AXLE_Y = WHEEL_RADIUS + REST_LENGTH - REST_COMPRESSION;
-/** Half-width of the phantom ray pairs; with the low centre of mass this lets the body hold ~1.6 g before an inside ray unloads. */
+/** Half-width of the phantom ray pairs; with the low centre of mass this lets the body hold ~1.4 g before an inside ray unloads. */
 const RAY_HALF_TRACK = 0.55;
 
 /**
@@ -40,8 +40,8 @@ const RAY_HALF_TRACK = 0.55;
  */
 export const MOTORCYCLE_SPEC: VehicleSpec = {
   drivetrain: SUPERBIKE,
-  halfExtents: { x: 0.3, y: 0.28, z: 1.05 },
-  colliderOffsetY: 0.33,
+  halfExtents: { x: 0.3, y: 0.26, z: 1.05 },
+  colliderOffsetY: 0.4,
   wheels: [
     { x: RAY_HALF_TRACK, y: AXLE_Y, z: 0.72, radius: WHEEL_RADIUS, steered: true, driven: false },
     { x: -RAY_HALF_TRACK, y: AXLE_Y, z: 0.72, radius: WHEEL_RADIUS, steered: true, driven: false },
@@ -57,9 +57,10 @@ export const MOTORCYCLE_SPEC: VehicleSpec = {
   rearFrictionSlip: 3.2,
   handbrakeFrictionSlip: 1.0,
   sideFrictionStiffness: 1,
-  brakeForce: 2400,
-  handbrakeForce: 3000,
-  steerLock: { low: 0.4, high: 0.045 },
+  brakeForce: 40,
+  handbrakeForce: 1500,
+  rollingBrake: 3,
+  steerLock: { low: 0.3, high: 0.035 },
   angularDamping: 2.4,
 };
 

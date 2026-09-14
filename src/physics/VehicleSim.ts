@@ -50,11 +50,15 @@ export interface VehicleSpec {
   sideFrictionStiffness: number;
   brakeForce: number;
   handbrakeForce: number;
+  /** Per-wheel brake impulse applied while coasting (no throttle or brake); defaults to the car tuning. */
+  rollingBrake?: number;
   /** Speed-dependent steering lock; defaults to the car tuning. */
   steerLock?: SteerLock;
   /** Rigid-body angular damping; defaults to the car tuning. */
   angularDamping?: number;
 }
+
+const CAR_ROLLING_BRAKE = 120;
 
 export const FERRARI_SPEC: VehicleSpec = {
   drivetrain: SPORTS_COUPE,
@@ -196,7 +200,7 @@ export class VehicleSim {
       brake = this.spec.brakeForce * c.brake;
       if (this.speed < -0.2 && c.throttle > 0) brake = this.spec.brakeForce * c.throttle;
     }
-    const rollingBrake = c.throttle === 0 && c.brake === 0 ? 120 : 0;
+    const rollingBrake = c.throttle === 0 && c.brake === 0 ? (this.spec.rollingBrake ?? CAR_ROLLING_BRAKE) : 0;
 
     // Rapier's positive wheel steering yaws toward chassis +X, the left side of a +Z-forward car.
     const targetSteer = -c.steer * maxSteerAngle(this.speed, this.spec.steerLock);
@@ -252,6 +256,12 @@ export class VehicleSim {
   heading(): number {
     const fwd = rotateVec({ x: 0, y: 0, z: 1 }, this.body.rotation());
     return Math.atan2(fwd.x, fwd.z);
+  }
+
+  /** Nose-up angle of the chassis forward axis above the horizon (rad); negative when the nose dips. */
+  pitch(): number {
+    const fwd = rotateVec({ x: 0, y: 0, z: 1 }, this.body.rotation());
+    return Math.asin(clamp(fwd.y, -1, 1));
   }
 
   /** Angular velocity about the chassis up axis (rad/s); positive turns towards +X (left). */
