@@ -91,9 +91,16 @@ export function downforce(speed: number, cfg: DrivetrainConfig): number {
   return cfg.downforceCoefficient * speed * speed;
 }
 
+export interface SteerLock {
+  /** Full lock available when nearly stopped (radians). */
+  low: number;
+  /** Lock left at racing speed (radians). */
+  high: number;
+}
+
+export const CAR_STEER_LOCK: SteerLock = { low: 0.58, high: 0.1 };
+
 /** Steering lock shrinks with speed so keyboard steering stays controllable. */
-export function maxSteerAngle(speed: number): number {
-  const lowSpeedLock = 0.58;
-  const highSpeedLock = 0.1;
-  return lowSpeedLock + (highSpeedLock - lowSpeedLock) * smoothstep(3, 55, Math.abs(speed));
+export function maxSteerAngle(speed: number, lock: SteerLock = CAR_STEER_LOCK): number {
+  return lock.low + (lock.high - lock.low) * smoothstep(3, 55, Math.abs(speed));
 }

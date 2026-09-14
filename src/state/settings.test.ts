@@ -13,15 +13,21 @@ describe('settings persistence', () => {
   it('round-trips through storage', () => {
     const storage = memoryStorage();
     expect(hasSavedSettings(storage)).toBe(false);
-    const saved = { quality: 'low', masterVolume: 0.2, paintIndex: 3, showPerf: true, laps: 5 } as const;
+    const saved = { quality: 'low', masterVolume: 0.2, paintIndex: 3, showPerf: true, laps: 5, vehicle: 'motorcycle' } as const;
     saveSettings(saved, storage);
     expect(hasSavedSettings(storage)).toBe(true);
     expect(loadSettings(storage)).toEqual(saved);
   });
 
   it('falls back field by field when stored values are invalid', () => {
-    const storage = memoryStorage({ 'nfs.settings.v1': JSON.stringify({ quality: 'insane', masterVolume: 4, paintIndex: 99, showPerf: 'yes', laps: 7 }) });
-    expect(loadSettings(storage)).toEqual({ quality: 'high', masterVolume: 1, paintIndex: 0, showPerf: false, laps: 3 });
+    const storage = memoryStorage({ 'nfs.settings.v1': JSON.stringify({ quality: 'insane', masterVolume: 4, paintIndex: 99, showPerf: 'yes', laps: 7, vehicle: 'hovercraft' }) });
+    expect(loadSettings(storage)).toEqual({ quality: 'high', masterVolume: 1, paintIndex: 0, showPerf: false, laps: 3, vehicle: 'car' });
+  });
+
+  it('keeps the car for settings saved before vehicle selection existed', () => {
+    const legacy = { quality: 'medium', masterVolume: 0.5, paintIndex: 2, showPerf: false, laps: 1 };
+    const storage = memoryStorage({ 'nfs.settings.v1': JSON.stringify(legacy) });
+    expect(loadSettings(storage)).toEqual({ ...legacy, vehicle: 'car' });
   });
 
   it('ignores corrupt JSON and missing storage', () => {

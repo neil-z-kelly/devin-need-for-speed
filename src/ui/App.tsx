@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Game } from '../game/Game';
+import { PLAYER_SPECS } from '../game/PlayerVehicle';
+import { settingsStore } from '../state/settings';
 import { hudStore, useStore } from '../state/store';
-import { SPORTS_COUPE } from '../physics/drivetrain';
 import { Hud } from './Hud';
 import { Menu } from './Menu';
 import { Results } from './Results';
@@ -12,6 +13,7 @@ export function App() {
   const [game, setGame] = useState<Game | null>(null);
   const phase = useStore(hudStore, (s) => s.phase);
   const error = useStore(hudStore, (s) => s.error);
+  const vehicle = useStore(settingsStore, (s) => s.vehicle);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -33,7 +35,7 @@ export function App() {
       <canvas ref={minimapRef} className="minimap" width={220} height={220} style={{ visibility: inRace ? 'visible' : 'hidden' }} />
       {(phase === 'loading' || error) && <LoadingScreen />}
       {game && phase === 'menu' && <Menu game={game} />}
-      {game && inRace && <Hud game={game} redline={SPORTS_COUPE.redlineRpm} />}
+      {game && inRace && <Hud game={game} redline={PLAYER_SPECS[vehicle].drivetrain.redlineRpm} />}
       {game && phase === 'finished' && <Results game={game} />}
     </>
   );

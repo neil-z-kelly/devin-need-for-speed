@@ -95,20 +95,31 @@ export const PAINT_COLORS = [
 export const LAP_OPTIONS = [1, 3, 5] as const;
 export type LapCount = (typeof LAP_OPTIONS)[number];
 
+export const VEHICLES = [
+  { id: 'car', name: 'GT Coupe', blurb: '4.5 L V8 · 1,450 kg · downforce and grip' },
+  { id: 'motorcycle', name: 'Superbike', blurb: '1.0 L inline-four · 240 kg · leans into every corner' },
+] as const;
+export type VehicleKind = (typeof VEHICLES)[number]['id'];
+
 export interface Settings {
   quality: QualityLevel;
   masterVolume: number;
   paintIndex: number;
   showPerf: boolean;
   laps: LapCount;
+  vehicle: VehicleKind;
 }
 
 const STORAGE_KEY = 'nfs.settings.v1';
 
-const DEFAULTS: Settings = { quality: 'high', masterVolume: 0.7, paintIndex: 0, showPerf: false, laps: 3 };
+const DEFAULTS: Settings = { quality: 'high', masterVolume: 0.7, paintIndex: 0, showPerf: false, laps: 3, vehicle: 'car' };
 
 function isLapCount(v: unknown): v is LapCount {
   return typeof v === 'number' && (LAP_OPTIONS as readonly number[]).includes(v);
+}
+
+export function isVehicleKind(v: unknown): v is VehicleKind {
+  return typeof v === 'string' && VEHICLES.some((vehicle) => vehicle.id === v);
 }
 
 export function isQuality(v: unknown): v is QualityLevel {
@@ -131,6 +142,7 @@ export function loadSettings(storage: Pick<Storage, 'getItem'> | null = safeStor
           : DEFAULTS.paintIndex,
       showPerf: typeof p.showPerf === 'boolean' ? p.showPerf : DEFAULTS.showPerf,
       laps: isLapCount(p.laps) ? p.laps : DEFAULTS.laps,
+      vehicle: isVehicleKind(p.vehicle) ? p.vehicle : DEFAULTS.vehicle,
     };
   } catch {
     return { ...DEFAULTS };
